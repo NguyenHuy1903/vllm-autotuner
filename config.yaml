@@ -1,0 +1,23 @@
+# vLLM Auto-Tuner configuration
+# Có thể override từng key bằng ENV var AUTOTUNER_*
+
+paths:
+  models_dir: /projects/MedTrivita/common/models
+  container_models_dir: /models
+  db_path: /home/data_team/usr/huynq/MLops/vllm-autotuner/data/results.db
+  frontend_build_dir: /home/data_team/usr/huynq/MLops/vllm-autotuner/frontend/build
+
+docker:
+  default_image: vllm/vllm-openai:v0.18.1
+  port_start: 9200
+  port_end: 9300
+  container_prefix: autotuner-
+
+runtime:
+  models_cache_ttl_s: 60
+
+api:
+  host: 0.0.0.0
+  port: 9100
+  cors_allow_origins:
+    - "*"

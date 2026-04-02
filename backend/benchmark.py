@@ -136,6 +136,10 @@ async def run_benchmark(
         "repetition_penalty": params.repetition_penalty,
     }
 
+    concurrent_levels = sorted({c for c in params.concurrent_users if isinstance(c, int) and c > 0})
+    if not concurrent_levels:
+        concurrent_levels = [1]
+
     async with httpx.AsyncClient(timeout=180.0) as client:
         # ── 1. Warmup ─────────────────────────────────────────────────────────
         for _ in range(3):
@@ -147,24 +151,33 @@ async def run_benchmark(
                 pass  # Warmup failure không ảnh hưởng kết quả
 
         # ── 2. Throughput test (max concurrency) ──────────────────────────────
-        max_concurrent = max(params.concurrent_users)
+        max_concurrent = max(concurrent_levels)
         sem = asyncio.Semaphore(max_concurrent)
         total_tokens = 0
+        throughput_success = 0
+        throughput_fail = 0
         t_start = time.perf_counter()
 
         async def bounded_request():
-            nonlocal total_tokens
+            nonlocal total_tokens, throughput_success, throughput_fail
             async with sem:
                 try:
                     _, tokens = await _single_request_non_stream(
                         client, endpoint, model_name, prompt, params.max_tokens, sampling_params
                     )
                     total_tokens += tokens
+                    throughput_success += 1
                 except Exception:
-                    pass
+                    throughput_fail += 1
 
         tasks = [bounded_request() for _ in range(params.num_prompts)]
         await asyncio.gather(*tasks)
+
+        if throughput_success == 0:
+            raise RuntimeError(
+                "Benchmark throughput phase failed: 0 successful requests "
+                f"(attempted={params.num_prompts})."
+            )
 
         wall_time = time.perf_counter() - t_start
         throughput_tok_s = total_tokens / wall_time if wall_time > 0 else 0
@@ -173,16 +186,20 @@ async def run_benchmark(
         concurrency_details: list[ConcurrencyDetail] = []
         all_latencies: list[float] = []
         all_ttfts: list[float] = []
+        latency_success_total = 0
+        latency_fail_total = 0
 
-        for c in sorted(params.concurrent_users):
+        for c in concurrent_levels:
             sem_c = asyncio.Semaphore(c)
             latencies: list[float] = []
             ttfts: list[float] = []
             tokens_c = 0
+            success_c = 0
+            fail_c = 0
             t_c = time.perf_counter()
 
             async def bounded_stream_request():
-                nonlocal tokens_c
+                nonlocal tokens_c, success_c, fail_c
                 async with sem_c:
                     try:
                         ttft, total_lat, toks = await _single_request_stream_ttft(
@@ -191,8 +208,9 @@ async def run_benchmark(
                         latencies.append(total_lat)
                         ttfts.append(ttft)
                         tokens_c += toks
+                        success_c += 1
                     except Exception:
-                        pass
+                        fail_c += 1
 
             # 10 requests per concurrency level
             n_samples = min(10, params.num_prompts)
@@ -202,6 +220,8 @@ async def run_benchmark(
             wall_c = time.perf_counter() - t_c
 
             if latencies:
+                latency_success_total += success_c
+                latency_fail_total += fail_c
                 all_latencies.extend(latencies)
                 all_ttfts.extend(ttfts)
                 throughput_c = tokens_c / wall_c if wall_c > 0 else 0
@@ -213,6 +233,12 @@ async def run_benchmark(
                     avg_latency_ms=round(statistics.mean(latencies), 2),
                     p99_latency_ms=round(_percentile(latencies, 99), 2),
                 ))
+
+        if not all_latencies or not all_ttfts:
+            raise RuntimeError(
+                "Benchmark latency phase failed: no successful streaming samples "
+                f"(success={latency_success_total}, fail={latency_fail_total})."
+            )
 
     # ── 4. Tổng hợp metrics ───────────────────────────────────────────────────
     ttft_ms = round(statistics.median(all_ttfts), 2) if all_ttfts else 0.0
@@ -226,7 +252,7 @@ async def run_benchmark(
         avg_latency_ms=avg_lat,
         p50_latency_ms=p50_lat,
         p99_latency_ms=p99_lat,
-        max_concurrent_tested=max(params.concurrent_users),
+        max_concurrent_tested=max(concurrent_levels),
         startup_time_s=round(startup_time_s, 2),
         concurrency_details=concurrency_details,
     )

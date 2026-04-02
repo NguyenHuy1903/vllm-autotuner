@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
+from settings import settings
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
@@ -33,6 +34,14 @@ class RunStatus(str, Enum):
     BENCHMARKING = "benchmarking"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class SweepMode(str, Enum):
+    """Chế độ chạy sweep preset mức độ sâu benchmark."""
+    QUICK = "quick"
+    NORMAL = "normal"
+    DEEP = "deep"
+    HELL = "hell"  # Alias của deep
 
 
 # ── Model Info (từ scanner) ───────────────────────────────────────────────────
@@ -101,7 +110,7 @@ class RunConfig(BaseModel):
     dtype: str = "auto"
     extra_args: dict = Field(default_factory=dict)
     env_vars: dict = Field(default_factory=dict)
-    docker_image: str = "vllm/vllm-openai:v0.18.1"
+    docker_image: str = settings.default_docker_image
 
 
 class BenchmarkParams(BaseModel):
@@ -166,12 +175,13 @@ class SweepRequest(BaseModel):
     tp_sizes: Optional[list[int]] = None           # None = tự động
     max_num_seqs_values: Optional[list[int]] = None # None = tự động
     gpu_memory_utils: list[float] = Field(default_factory=lambda: [0.85, 0.90, 0.95])
-    docker_image: str = "vllm/vllm-openai:v0.18.1"
+    docker_image: str = settings.default_docker_image
     benchmark_params: BenchmarkParams = Field(default_factory=BenchmarkParams)
     dtype: str = "auto"
     max_model_len: Optional[int] = None
     extra_args: dict = Field(default_factory=dict)
     env_vars: dict = Field(default_factory=dict)
+    run_mode: SweepMode = SweepMode.NORMAL
 
 
 class SweepStatus(BaseModel):

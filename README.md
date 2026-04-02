@@ -63,6 +63,7 @@ vllm-autotuner/
 │           └── DetailPopup.jsx             # Modal chi tiết khi click điểm
 ├── data/
 │   └── results.db                          # SQLite (tự tạo khi chạy)
+├── config.yaml                             # Cấu hình infra (paths/ports/image)
 ├── setup_and_run.sh                        # Script setup + build lần đầu
 └── README.md
 ```
@@ -94,6 +95,23 @@ vllm/vllm-openai:v0.18.1   (hoặc nightly)
 
 ## Cài đặt & Chạy
 
+### File cấu hình hạ tầng (YAML)
+
+Toàn bộ đường dẫn/port/image đã được tách ra file:
+
+```bash
+config.yaml
+```
+
+Các key quan trọng:
+- `paths.models_dir`
+- `paths.db_path`
+- `docker.default_image`
+- `docker.port_start`, `docker.port_end`
+- `api.host`, `api.port`
+
+Bạn có thể override bằng biến môi trường `AUTOTUNER_*` nếu cần.
+
 ### Bước 1 — Setup lần đầu
 
 ```bash
@@ -103,8 +121,9 @@ bash setup_and_run.sh
 
 Script này sẽ:
 1. Cài `aiosqlite` nếu chưa có
-2. `npm install` + `npm run build` React frontend
-3. Khởi tạo SQLite database
+2. Cài `pyyaml` để đọc cấu hình YAML
+3. `npm install` + `npm run build` React frontend
+4. Khởi tạo SQLite database
 
 ### Bước 2 — Chạy Backend (dùng tmux để tránh rớt SSH)
 
@@ -113,7 +132,7 @@ tmux new-session -s autotuner
 
 conda activate data
 cd /home/data_team/usr/huynq/MLops/vllm-autotuner/backend
-uvicorn main:app --host 0.0.0.0 --port 9100 --workers 1
+python main.py
 ```
 
 > **Lưu ý**: Phải dùng `--workers 1` vì hệ thống dùng in-process state (port allocator, GPU locks, WebSocket manager).
@@ -124,10 +143,10 @@ Attach lại: `tmux attach -t autotuner`
 ### Bước 3 — SSH Port Forwarding (trên máy cá nhân)
 
 ```bash
-ssh -L 9100:localhost:9100 <username>@<server-ip>
+ssh -L <api_port>:localhost:<api_port> <username>@<server-ip>
 ```
 
-Mở trình duyệt: **http://localhost:9100**
+Mở trình duyệt: **http://localhost:<api_port>**
 
 ---
 
@@ -135,7 +154,7 @@ Mở trình duyệt: **http://localhost:9100**
 
 ### 1. Chọn Model
 
-Dropdown tự động quét `/projects/MedTrivita/common/models/` và hiển thị:
+Dropdown tự động quét thư mục cấu hình tại `paths.models_dir` trong `config.yaml` và hiển thị:
 - Tổng params (total / active cho MoE)
 - Precision badge (FP8, BF16, GPTQ-W4...)
 - Dung lượng disk
@@ -204,7 +223,7 @@ File gồm 3 sheets:
 
 | Method | Endpoint | Mô tả |
 |--------|----------|--------|
-| GET | `/api/models` | Danh sách models (cache 60s) |
+| GET | `/api/models` | Danh sách models (cache theo `runtime.models_cache_ttl_s`) |
 | GET | `/api/models/{name}` | Chi tiết 1 model |
 | GET | `/api/gpus` | GPU status từ nvidia-smi |
 | POST | `/api/heuristic` | Tính VRAM breakdown |

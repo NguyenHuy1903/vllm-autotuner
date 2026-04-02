@@ -18,6 +18,7 @@ from models import (
     BenchmarkParams, HeuristicRequest, HeuristicResult,
     ModelInfo, RunConfig,
 )
+from settings import settings
 
 # Overhead vLLM framework + CUDA context + NCCL buffers (GB per GPU)
 FRAMEWORK_OVERHEAD_GB = 7.0
@@ -154,7 +155,7 @@ def generate_sweep_configs(
     tp_sizes: Optional[list[int]] = None,
     max_num_seqs_values: Optional[list[int]] = None,
     gpu_memory_utils: Optional[list[float]] = None,
-    docker_image: str = "vllm/vllm-openai:v0.18.1",
+    docker_image: str = settings.default_docker_image,
     benchmark_params: Optional[BenchmarkParams] = None,
     dtype: str = "auto",
     max_model_len: Optional[int] = None,

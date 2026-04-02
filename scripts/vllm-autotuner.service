@@ -1,0 +1,20 @@
+[Unit]
+Description=vLLM Auto-Tuner Backend Service
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=data_team
+Group=data_team
+WorkingDirectory=/opt/vllm-autotuner
+ExecStart=/bin/bash /opt/vllm-autotuner/scripts/start.sh
+ExecStop=/bin/bash /opt/vllm-autotuner/scripts/stop.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=vllm-autotuner
+
+[Install]
+WantedBy=multi-user.target

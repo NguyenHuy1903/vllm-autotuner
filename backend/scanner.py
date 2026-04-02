@@ -9,9 +9,10 @@ import os
 from pathlib import Path
 
 from models import ModelInfo
+from settings import settings
 
 # Thư mục mặc định chứa models trên server
-DEFAULT_MODELS_DIR = "/projects/MedTrivita/common/models"
+DEFAULT_MODELS_DIR = settings.models_dir
 
 # Các thư mục không phải LLM, bỏ qua khi scan
 SKIP_DIRS = {

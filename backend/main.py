@@ -41,10 +41,11 @@ from exporter import export_to_xlsx
 from heuristic import compute_heuristic, generate_sweep_configs
 from models import (
     BenchmarkMetrics, BenchmarkResult, GPUInfo, HeuristicRequest,
-    HeuristicResult, ModelInfo, RunConfig, RunStatus, SweepRequest,
+    HeuristicResult, ModelInfo, RunConfig, RunStatus, SweepMode, SweepRequest,
     SweepStatus, WSMessage,
 )
 from scanner import scan_models, scan_single_model
+from settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -89,7 +90,88 @@ _sweeps: dict[str, SweepStatus] = {}
 
 _models_cache: Optional[list[ModelInfo]] = None
 _models_cache_time: float = 0
-_MODELS_CACHE_TTL = 60  # giây
+_MODELS_CACHE_TTL = settings.models_cache_ttl_s
+
+
+def _unique_sorted_ints(values: Optional[list[int]], minimum: int = 1) -> Optional[list[int]]:
+    if values is None:
+        return None
+    cleaned = sorted({int(v) for v in values if isinstance(v, int) and v >= minimum})
+    return cleaned
+
+
+def _unique_sorted_floats(values: Optional[list[float]], min_val: float, max_val: float) -> Optional[list[float]]:
+    if values is None:
+        return None
+    cleaned = sorted({round(float(v), 4) for v in values if isinstance(v, (int, float)) and min_val <= float(v) <= max_val})
+    return cleaned
+
+
+def _apply_mode_defaults(req: SweepRequest, gpu_count: int) -> None:
+    """
+    Áp preset theo mode nhưng vẫn tôn trọng giá trị người dùng đã nhập.
+    - quick: sweep hẹp, chạy nhanh.
+    - normal: tương thích hành vi hiện tại.
+    - deep/hell: sweep rộng + benchmark sâu hơn.
+    """
+    mode = req.run_mode
+    if mode == SweepMode.HELL:
+        mode = SweepMode.DEEP
+
+    # Normal = giữ nguyên defaults hiện tại
+    if mode == SweepMode.NORMAL:
+        return
+
+    if mode == SweepMode.QUICK:
+        if req.tp_sizes is None:
+            req.tp_sizes = [gpu_count]
+        if req.max_num_seqs_values is None:
+            req.max_num_seqs_values = [8, 16, 32]
+        if not req.gpu_memory_utils:
+            req.gpu_memory_utils = [0.90]
+        if req.benchmark_params.num_prompts == 50:
+            req.benchmark_params.num_prompts = 20
+        if req.benchmark_params.concurrent_users == [1, 4, 8, 16]:
+            req.benchmark_params.concurrent_users = [1, 2, 4]
+        if req.benchmark_params.timeout_per_run_s == 900:
+            req.benchmark_params.timeout_per_run_s = 420
+        return
+
+    if mode == SweepMode.DEEP:
+        if not req.gpu_memory_utils:
+            req.gpu_memory_utils = [0.80, 0.85, 0.90, 0.95]
+        if req.benchmark_params.num_prompts == 50:
+            req.benchmark_params.num_prompts = 120
+        if req.benchmark_params.concurrent_users == [1, 4, 8, 16]:
+            req.benchmark_params.concurrent_users = [1, 4, 8, 16, 24, 32]
+        if req.benchmark_params.timeout_per_run_s == 900:
+            req.benchmark_params.timeout_per_run_s = 1800
+
+
+def _normalize_sweep_request(req: SweepRequest) -> None:
+    """Chuẩn hóa request để tránh lỗi runtime do input rỗng/sai format."""
+    # concurrent_users rỗng sẽ làm benchmark max() crash
+    req.benchmark_params.concurrent_users = (
+        _unique_sorted_ints(req.benchmark_params.concurrent_users, minimum=1)
+        or [1, 4, 8, 16]
+    )
+
+    if req.benchmark_params.timeout_per_run_s <= 0:
+        req.benchmark_params.timeout_per_run_s = 900
+
+    if req.benchmark_params.num_prompts <= 0:
+        req.benchmark_params.num_prompts = 50
+
+    req.gpu_memory_utils = (
+        _unique_sorted_floats(req.gpu_memory_utils, min_val=0.5, max_val=0.99)
+        or [0.85, 0.90, 0.95]
+    )
+
+    req.tp_sizes = _unique_sorted_ints(req.tp_sizes, minimum=1)
+    req.max_num_seqs_values = _unique_sorted_ints(req.max_num_seqs_values, minimum=1)
+
+    if req.max_model_len is not None and req.max_model_len <= 0:
+        req.max_model_len = None
 
 
 async def get_cached_models() -> list[ModelInfo]:
@@ -130,7 +212,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -227,6 +309,12 @@ async def start_sweep(req: SweepRequest):
     model = next((m for m in models if m.name == req.model_name), None)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{req.model_name}' không tìm thấy")
+
+    if not req.gpu_ids:
+        raise HTTPException(status_code=400, detail="Cần chọn ít nhất 1 GPU")
+
+    _apply_mode_defaults(req, gpu_count=len(req.gpu_ids))
+    _normalize_sweep_request(req)
 
     sweep_id = str(uuid.uuid4())[:8]
 
@@ -392,7 +480,10 @@ async def _run_sweep(
 
         try:
             if port is None:
-                raise RuntimeError("Không còn port khả dụng trong dải 9200-9299")
+                raise RuntimeError(
+                    f"Không còn port khả dụng trong dải "
+                    f"{docker_worker.PORT_RANGE.start}-{docker_worker.PORT_RANGE.stop - 1}"
+                )
 
             result.status = RunStatus.STARTING
             await db.update_run_status(run_id, RunStatus.STARTING)
@@ -485,7 +576,7 @@ async def _run_sweep(
 
 # ── Static Files (React SPA) ──────────────────────────────────────────────────
 
-_FRONTEND_BUILD = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
+_FRONTEND_BUILD = settings.frontend_build_dir
 
 if os.path.isdir(_FRONTEND_BUILD):
     app.mount("/", StaticFiles(directory=_FRONTEND_BUILD, html=True), name="spa")
@@ -500,4 +591,4 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=9100, workers=1, reload=False)
+    uvicorn.run("main:app", host=settings.api_host, port=settings.api_port, workers=1, reload=False)

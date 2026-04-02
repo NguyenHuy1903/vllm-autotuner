@@ -12,9 +12,10 @@ from typing import Optional
 import aiosqlite
 
 from models import BenchmarkResult, ErrorClass, ModelInfo, RunStatus
+from settings import settings
 
 # Đường dẫn database
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "results.db")
+DB_PATH = settings.db_path
 
 # DDL
 CREATE_MODELS_TABLE = """

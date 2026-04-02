@@ -61,6 +61,7 @@ export default function ConfigPanel({ selectedModel, selectedGPUs, onSweepStarte
   const [heuristicLoading, setHeuristicLoading] = useState(false);
   const [sweepLoading, setSweepLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [runMode, setRunMode] = useState("normal");
 
   // Advanced panel
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -100,6 +101,7 @@ export default function ConfigPanel({ selectedModel, selectedGPUs, onSweepStarte
   const [repetitionPenalty, setRepetitionPenalty] = useState(1.0);
 
   const canRun = selectedModel && selectedGPUs.length > 0;
+  const validTpOptions = TP_OPTIONS.filter(tp => selectedGPUs.length > 0 && selectedGPUs.length % tp === 0);
 
   function toggleMemUtil(val) {
     setAdvMemUtils(prev =>
@@ -169,6 +171,7 @@ export default function ConfigPanel({ selectedModel, selectedGPUs, onSweepStarte
       const result = await startSweep({
         model_name: selectedModel,
         gpu_ids: selectedGPUs,
+        run_mode: runMode,
         gpu_memory_utils,
         tp_sizes,
         max_num_seqs_values,
@@ -217,6 +220,13 @@ export default function ConfigPanel({ selectedModel, selectedGPUs, onSweepStarte
       <label style={labelStyle}>Docker Image</label>
       <select value={dockerImage} onChange={e => setDockerImage(e.target.value)} style={inputStyle}>
         {DOCKER_IMAGES.map(img => <option key={img} value={img}>{img}</option>)}
+      </select>
+
+      <label style={labelStyle}>Run Mode</label>
+      <select value={runMode} onChange={e => setRunMode(e.target.value)} style={inputStyle}>
+        <option value="quick">quick</option>
+        <option value="normal">normal</option>
+        <option value="deep">deep (PRODUCT-ready deep try)</option>
       </select>
 
       <label style={labelStyle}>GPU Memory Utilization: {(gpuMemUtil * 100).toFixed(0)}%</label>
@@ -407,13 +417,18 @@ export default function ConfigPanel({ selectedModel, selectedGPUs, onSweepStarte
 
           <label style={{ ...labelStyle, marginTop: 6 }}>TP sizes (none = auto từ GPU count)</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-            {TP_OPTIONS.map(tp => (
+            {validTpOptions.map(tp => (
               <span key={tp} style={chipStyle(customTpSizes.includes(tp))}
                 onClick={() => toggleTpSize(tp)}>
                 TP={tp}
               </span>
             ))}
           </div>
+          {validTpOptions.length === 0 && (
+            <div style={{ marginTop: 4, fontSize: 11, color: "#9ca3af" }}>
+              Chọn GPU trước để hiển thị TP hợp lệ.
+            </div>
+          )}
 
           <label style={{ ...labelStyle, marginTop: 10 }}>GPU mem utils (none = dùng slider)</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>

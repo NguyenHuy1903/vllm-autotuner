@@ -25,23 +25,27 @@ import httpx
 
 from log_parser import classify_log_line, get_progress_message, is_ready_signal
 from models import BenchmarkResult, ErrorClass, RunConfig, RunStatus
+from settings import settings
 
 logger = logging.getLogger(__name__)
 
 # ── Cấu hình ──────────────────────────────────────────────────────────────────
 
 # Volume mount: thư mục models trên host → /models trong container
-HOST_MODELS_DIR = "/projects/MedTrivita/common/models"
-CONTAINER_MODELS_DIR = "/models"
+HOST_MODELS_DIR = settings.models_dir
+CONTAINER_MODELS_DIR = settings.container_models_dir
 
 # Dải port dành cho vLLM containers
-PORT_RANGE = range(9200, 9300)
+PORT_RANGE = range(settings.port_start, settings.port_end)
 
 # Interval poll health check (giây)
 HEALTH_POLL_INTERVAL = 2.0
 
 # Tên prefix của autotuner containers để nhận diện và cleanup
-CONTAINER_PREFIX = "autotuner-"
+CONTAINER_PREFIX = settings.container_prefix
+
+# Giới hạn số dòng log lưu vào DB khi container fail
+MAX_LOG_LINES_SAVED = 240
 
 
 # ── State management ──────────────────────────────────────────────────────────
@@ -288,7 +292,18 @@ async def monitor_container(
                 pass
 
     elapsed = time.time() - start_time
-    log_tail = "\n".join(log_buffer[-100:])  # 100 dòng cuối
+    if len(log_buffer) <= MAX_LOG_LINES_SAVED:
+        log_excerpt = "\n".join(log_buffer)
+    else:
+        # Giữ cả phần đầu và cuối để không mất root-cause thường nằm ở đầu stacktrace
+        half = MAX_LOG_LINES_SAVED // 2
+        head = "\n".join(log_buffer[:half])
+        tail = "\n".join(log_buffer[-half:])
+        log_excerpt = (
+            f"{head}\n"
+            f"\n... [truncated {len(log_buffer) - (half * 2)} lines] ...\n\n"
+            f"{tail}"
+        )
 
     # Kiểm tra kết quả
     if health_task in done and not health_task.cancelled():
@@ -298,7 +313,7 @@ async def monitor_container(
                 logger.info(f"Container {container_id} sẵn sàng sau {elapsed:.1f}s")
                 return ContainerOutcome(
                     status="ready",
-                    log_tail=log_tail,
+                    log_tail=log_excerpt,
                     startup_time_s=elapsed,
                     container_id=container_id,
                 )
@@ -311,7 +326,7 @@ async def monitor_container(
         return ContainerOutcome(
             status="failed",
             error_class=error_class,
-            log_tail=log_tail,
+            log_tail=log_excerpt,
             startup_time_s=elapsed,
             container_id=container_id,
         )
@@ -330,7 +345,7 @@ async def monitor_container(
         return ContainerOutcome(
             status="failed",
             error_class=detected_ec,
-            log_tail=log_tail,
+            log_tail=log_excerpt,
             startup_time_s=elapsed,
             container_id=container_id,
         )
@@ -339,7 +354,7 @@ async def monitor_container(
     return ContainerOutcome(
         status="timeout",
         error_class=ErrorClass.TIMEOUT,
-        log_tail=log_tail,
+        log_tail=log_excerpt,
         startup_time_s=elapsed,
         container_id=container_id,
     )

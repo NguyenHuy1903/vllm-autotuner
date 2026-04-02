@@ -13,14 +13,17 @@ FRONTEND_DIR="$SCRIPT_DIR/frontend"
 echo "=== vLLM Auto-Tuner Setup ==="
 
 # ── 1. Kích hoạt conda env ────────────────────────────────────────────────────
-source /home/data_team/miniconda3/etc/profile.d/conda.sh
+CONDA_BASE="$(conda info --base)"
+source "$CONDA_BASE/etc/profile.d/conda.sh"
 conda activate data
 echo "[1/4] Conda env 'data' đã kích hoạt"
 
 # ── 2. Cài Python dependencies còn thiếu ──────────────────────────────────────
 echo "[2/4] Kiểm tra Python dependencies..."
 pip install -q aiosqlite 2>/dev/null || true
+pip install -q pyyaml 2>/dev/null || true
 echo "  ✓ aiosqlite"
+echo "  ✓ pyyaml"
 
 # ── 3. Build React Frontend ───────────────────────────────────────────────────
 echo "[3/4] Build React frontend..."
@@ -51,15 +54,17 @@ print('  ✓ Database khởi tạo tại ../data/results.db')
 echo ""
 echo "=== Setup hoàn tất! ==="
 echo ""
+echo "Cấu hình infra nằm ở file: $SCRIPT_DIR/config.yaml"
+echo ""
 echo "Để chạy backend, mở tmux session:"
 echo ""
 echo "  tmux new-session -s autotuner"
 echo "  conda activate data"
 echo "  cd $BACKEND_DIR"
-echo "  uvicorn main:app --host 0.0.0.0 --port 9100 --workers 1"
+echo "  python main.py   # host/port đọc từ config.yaml"
 echo ""
 echo "SSH Port Forwarding (trên máy cá nhân của bạn):"
 echo ""
-echo "  ssh -L 9100:localhost:9100 data_team@172.22.132.68"
-echo "  # Sau đó mở: http://localhost:9100"
+echo "  ssh -L <api_port>:localhost:<api_port> <username>@<server-ip>"
+echo "  # Sau đó mở: http://localhost:<api_port>"
 echo ""
