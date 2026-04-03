@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>vLLM SamplingParams — Tham số đầy đủ</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-info: #e6f1fb;
+    --text: #1a1a18;
+    --text-secondary: #6b6b67;
+    --border: rgba(0,0,0,0.12);
+    --border-hover: rgba(0,0,0,0.25);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --bg-info: #0c447c;
+      --text: #f0efe9;
+      --text-secondary: #9a9a96;
+      --border: rgba(255,255,255,0.12);
+      --border-hover: rgba(255,255,255,0.25);
+    }
+    .cat-sampling { background: #0C447C !important; color: #B5D4F4 !important; }
+    .cat-penalty  { background: #3C3489 !important; color: #CECBF6 !important; }
+    .cat-stop     { background: #27500A !important; color: #C0DD97 !important; }
+    .cat-output   { background: #633806 !important; color: #FAC775 !important; }
+    .cat-logprob  { background: #72243E !important; color: #F4C0D1 !important; }
+    .cat-guided   { background: #085041 !important; color: #9FE1CB !important; }
+    .cat-beam     { background: #712B13 !important; color: #F5C4B3 !important; }
+    code { background: #333330 !important; color: #e8e7e1 !important; }
+    th { background: #1e1e1c !important; }
+  }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  header { margin-bottom: 2rem; }
+  header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  header p { font-size: 14px; color: var(--text-secondary); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 1rem; }
+  .search-bar {
+    flex: 1; min-width: 200px; padding: 8px 12px;
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; background: var(--bg-secondary); color: var(--text);
+    font-family: var(--font);
+  }
+  .search-bar:focus { outline: none; border-color: var(--border-hover); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .pill {
+    padding: 5px 13px; border-radius: 20px;
+    border: 0.5px solid var(--border); font-size: 12px;
+    cursor: pointer; background: transparent; color: var(--text-secondary);
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .pill:hover { border-color: var(--border-hover); color: var(--text); }
+  .pill.active { background: var(--bg-info); color: #0C447C; border-color: transparent; }
+  @media (prefers-color-scheme: dark) { .pill.active { color: #B5D4F4; } }
+  .count { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+  .table-wrap { overflow-x: auto; border: 0.5px solid var(--border); border-radius: var(--radius-lg); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 12px;
+    border-bottom: 0.5px solid var(--border);
+    color: var(--text-secondary); font-weight: 500;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+  }
+  td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+  code {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--bg-secondary); padding: 2px 6px;
+    border-radius: 4px; color: var(--text); display: inline-block;
+  }
+  .badge {
+    display: inline-block; padding: 2px 9px;
+    border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .cat-sampling { background: #E6F1FB; color: #0C447C; }
+  .cat-penalty  { background: #EEEDFE; color: #3C3489; }
+  .cat-stop     { background: #EAF3DE; color: #27500A; }
+  .cat-output   { background: #FAEEDA; color: #633806; }
+  .cat-logprob  { background: #FBEAF0; color: #72243E; }
+  .cat-guided   { background: #E1F5EE; color: #085041; }
+  .cat-beam     { background: #FAECE7; color: #712B13; }
+  .col-name    { width: 20%; }
+  .col-type    { width: 18%; }
+  .col-default { width: 10%; }
+  .col-cat     { width: 12%; }
+  .col-desc    { width: 40%; }
+  .type-cell { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); }
+  .desc-cell { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+  footer { margin-top: 2rem; font-size: 12px; color: var(--text-secondary); border-top: 0.5px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>vLLM SamplingParams — Tham số đầy đủ</h1>
+  <p>Toàn bộ parameter có thể truyền vào <code>vllm.SamplingParams</code> khi inference. Dựa trên tài liệu chính thức vLLM.</p>
+</header>
+
+<div class="toolbar">
+  <input class="search-bar" type="text" placeholder="Tìm kiếm parameter, mô tả..." id="search" />
+</div>
+<div class="filters" id="filters"></div>
+<div class="count" id="count"></div>
+
+<div class="table-wrap">
+<table id="tbl">
+<thead><tr>
+  <th class="col-name">Parameter</th>
+  <th class="col-type">Kiểu dữ liệu</th>
+  <th class="col-default">Default</th>
+  <th class="col-cat">Nhóm</th>
+  <th class="col-desc">Mô tả</th>
+</tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<footer>Nguồn: <a href="https://docs.vllm.ai/en/latest/api/vllm/sampling_params/" target="_blank">docs.vllm.ai</a> — vLLM SamplingParams API Reference</footer>
+
+<script>
+const data = [
+  { name: "n", type: "int", def: "1", cat: "output", desc: "Số lượng output sequence trả về cho mỗi prompt. Khi n > 1 với AsyncLLM, cần dùng output_kind=FINAL_ONLY để thấy đủ kết quả." },
+  { name: "best_of", type: "int | None", def: "None", cat: "sampling", desc: "Số sequence được sinh ra để chọn top-n tốt nhất. Mặc định bằng n. Là beam width khi dùng beam search." },
+  { name: "temperature", type: "float", def: "1.0", cat: "sampling", desc: "Điều chỉnh độ ngẫu nhiên. 0 = greedy (deterministic), cao hơn = sáng tạo hơn. Không thể dùng cùng use_beam_search." },
+  { name: "top_p", type: "float", def: "1.0", cat: "sampling", desc: "Nucleus sampling: chỉ lấy các token có xác suất tích lũy ≤ top_p. Không dùng cùng beam search." },
+  { name: "top_k", type: "int", def: "-1", cat: "sampling", desc: "Chỉ lấy top-k token có xác suất cao nhất. -1 = tắt (lấy tất cả). Không dùng cùng beam search." },
+  { name: "min_p", type: "float", def: "0.0", cat: "sampling", desc: "Loại token có xác suất thấp hơn min_p × xác suất token cao nhất. 0.0 = tắt. Không dùng cùng beam search." },
+  { name: "seed", type: "int | None", def: "None", cat: "sampling", desc: "Random seed để đảm bảo reproducibility. Cùng prompt + seed sẽ ra cùng output." },
+  { name: "presence_penalty", type: "float", def: "0.0", cat: "penalty", desc: "Phạt token đã xuất hiện trong output. > 0 khuyến khích token mới, < 0 khuyến khích lặp lại. Range thực tế: [-2, 2]." },
+  { name: "frequency_penalty", type: "float", def: "0.0", cat: "penalty", desc: "Phạt token dựa theo tần suất xuất hiện trong output. > 0 tránh lặp, < 0 tăng lặp. Range thực tế: [-2, 2]." },
+  { name: "repetition_penalty", type: "float", def: "1.0", cat: "penalty", desc: "Nhân hệ số lên logit của token đã xuất hiện. > 1 giảm lặp, < 1 tăng lặp. 1.0 = không đổi. Đến từ HuggingFace, khác với presence/frequency_penalty." },
+  { name: "logit_bias", type: "dict[int, float] | None", def: "None", cat: "penalty", desc: "Chỉnh logit của token ID cụ thể trước khi sample. Key = token ID, value = bias (-100 ~ +100). +100 gần như ép token đó, -100 gần như cấm." },
+  { name: "allowed_token_ids", type: "list[int] | None", def: "None", cat: "penalty", desc: "Whitelist token ID được phép generate. Tất cả token khác bị set logit = -inf. Rất hữu ích cho constrained output." },
+  { name: "bad_words", type: "list[str] | None", def: "None", cat: "penalty", desc: "Danh sách chuỗi bị cấm xuất hiện trong output. Logit của token tạo ra bad word bị set = -inf." },
+  { name: "stop", type: "str | list[str] | None", def: "None", cat: "stop", desc: "Chuỗi dừng generation khi gặp. Output trả về không chứa stop string (trừ khi include_stop_str_in_output=True)." },
+  { name: "stop_token_ids", type: "list[int] | None", def: "None", cat: "stop", desc: "Token ID dừng generation. Output có thể chứa stop token trừ khi đó là special token." },
+  { name: "ignore_eos", type: "bool", def: "False", cat: "stop", desc: "Bỏ qua EOS token, tiếp tục sinh sau khi gặp EOS. Hữu ích khi muốn kiểm soát độ dài tuyệt đối bằng max_tokens." },
+  { name: "include_stop_str_in_output", type: "bool", def: "False", cat: "stop", desc: "Giữ lại stop string trong output thay vì bỏ đi. Mặc định stop string bị cắt bỏ khỏi kết quả." },
+  { name: "max_tokens", type: "int | None", def: "16", cat: "output", desc: "Số token tối đa được sinh ra. None = không giới hạn (đến EOS). Default rất nhỏ (16), cần tăng trong thực tế." },
+  { name: "min_tokens", type: "int", def: "0", cat: "output", desc: "Số token tối thiểu phải sinh ra trước khi EOS được phép xuất hiện. Ngăn output quá ngắn." },
+  { name: "truncate_prompt_tokens", type: "int | None", def: "None", cat: "output", desc: "Cắt bớt prompt còn N token cuối nếu prompt quá dài. Dùng khi prompt vượt context window của model." },
+  { name: "detokenize", type: "bool", def: "True", cat: "output", desc: "Chuyển token ID thành chuỗi văn bản. False nếu chỉ cần token ID thô để tăng hiệu suất." },
+  { name: "skip_special_tokens", type: "bool", def: "True", cat: "output", desc: "Bỏ special tokens (BOS, EOS, PAD...) khỏi output text. False để giữ lại các token đặc biệt." },
+  { name: "spaces_between_special_tokens", type: "bool", def: "True", cat: "output", desc: "Thêm khoảng trắng giữa các special token khi decode. Ảnh hưởng đến cách token ghép lại thành text." },
+  { name: "output_kind", type: "RequestOutputKind", def: "CUMULATIVE", cat: "output", desc: "Kiểu output streaming: CUMULATIVE = toàn bộ text đến hiện tại, DELTA = chỉ phần mới, FINAL_ONLY = chỉ kết quả cuối cùng." },
+  { name: "output_text_buffer_length", type: "int", def: "0", cat: "output", desc: "Buffer N token trước khi flush ra output stream. Giảm overhead I/O khi stream nhưng tăng first-token latency." },
+  { name: "logprobs", type: "int | None", def: "None", cat: "logprob", desc: "Trả về log probability của top-N token tại mỗi decode step. Dùng cho phân tích confidence, calibration." },
+  { name: "prompt_logprobs", type: "int | None", def: "None", cat: "logprob", desc: "Trả về log probability của từng token trong prompt. Hữu ích để tính perplexity hoặc scoring prompt." },
+  { name: "logits_processors", type: "list[Callable] | None", def: "None", cat: "logprob", desc: "Danh sách hàm can thiệp logit trước khi sample. Signature: (token_ids, logits) -> logits. Dùng để implement custom penalty/constraint." },
+  { name: "guided_decoding", type: "GuidedDecodingParams | None", def: "None", cat: "guided", desc: "Structured output: ép model sinh JSON schema, regex, grammar (EBNF), hoặc lựa chọn trong danh sách cố định." },
+  { name: "structured_outputs", type: "StructuredOutputsParams | None", def: "None", cat: "guided", desc: "Tham số cấu hình structured output nội bộ (được xây dựng từ guided_decoding). Thường không cần set trực tiếp." },
+  { name: "use_beam_search", type: "bool", def: "False", cat: "beam", desc: "[Deprecated] Bật beam search thay vì sampling. Không thể dùng với temperature/top_p/top_k/seed." },
+  { name: "length_penalty", type: "float", def: "1.0", cat: "beam", desc: "[Beam search] Phạt/thưởng sequence dài. > 1 ưu tiên sequence dài hơn, < 1 ưu tiên sequence ngắn hơn." },
+  { name: "early_stopping", type: "bool | str", def: "False", cat: "beam", desc: "[Beam search] True = dừng khi best_of beam hoàn thành. 'never' = chạy đến hết max_tokens. False = heuristic dựa trên length_penalty." },
+];
+
+const cats = {
+  sampling: { label: "Sampling", cls: "cat-sampling" },
+  penalty:  { label: "Penalty",  cls: "cat-penalty" },
+  stop:     { label: "Stop",     cls: "cat-stop" },
+  output:   { label: "Output",   cls: "cat-output" },
+  logprob:  { label: "Logprobs", cls: "cat-logprob" },
+  guided:   { label: "Guided",   cls: "cat-guided" },
+  beam:     { label: "Beam search", cls: "cat-beam" },
+};
+
+let active = "all";
+
+function badge(cat) {
+  const c = cats[cat];
+  return `<span class="badge ${c.cls}">${c.label}</span>`;
+}
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const rows = data.filter(d => {
+    const matchCat = active === "all" || d.cat === active;
+    const matchQ = !q || d.name.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  document.getElementById("tbody").innerHTML = rows.map(d => `
+    <tr>
+      <td class="col-name"><code>${d.name}</code></td>
+      <td class="col-type type-cell">${d.type}</td>
+      <td class="col-default"><code>${d.def}</code></td>
+      <td class="col-cat">${badge(d.cat)}</td>
+      <td class="col-desc desc-cell">${d.desc}</td>
+    </tr>
+  `).join("");
+  document.getElementById("count").textContent = `Hiển thị ${rows.length} / ${data.length} parameter`;
+}
+
+const filterDiv = document.getElementById("filters");
+const allCats = [["all", "Tất cả"], ...Object.entries(cats).map(([k, v]) => [k, v.label])];
+allCats.forEach(([k, label]) => {
+  const btn = document.createElement("button");
+  btn.className = "pill" + (k === "all" ? " active" : "");
+  btn.textContent = label;
+  btn.onclick = () => {
+    active = k;
+    document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  };
+  filterDiv.appendChild(btn);
+});
+
+document.getElementById("search").addEventListener("input", render);
+render();
+</script>
+</body>
+</html>
