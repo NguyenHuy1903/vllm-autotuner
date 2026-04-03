@@ -152,12 +152,39 @@ Mở trình duyệt: **http://localhost:<api_port>**
 
 ## Gallery / Demo
 
-> 🖼️ **[TODO: Thêm ảnh Dashboard chính]** — 3D scatter plot với Qwen model, TP size, throughput  
-> 🖼️ **[TODO: Thêm ảnh Model Selector]** — Dropdown chọn model, info badge  
-> 🖼️ **[TODO: Thêm ảnh GPU Grid]** — 8 GPU checkbox với VRAM bar  
-> 🖼️ **[TODO: Thêm ảnh Config Panel]** — Form cấu hình + VRAM estimator  
-> 🖼️ **[TODO: Thêm ảnh Detail Popup]** — Chi tiết khi click điểm trên chart  
-> 🖼️ **[TODO: Thêm ảnh Chart Controls]** — Rotation 3D, Projection 2D, heatmap  
+### Dashboard chính — 3D Interactive Chart
+![Dashboard chính](images/Dashboard%20chính.png)
+3D scatter plot Plotly: X = max_num_seqs, Y = tensor_parallel_size, Z = throughput/TTFT/latency  
+Xoay, zoom, click điểm để xem chi tiết — all real-time qua WebSocket
+
+### Model & GPU Selection
+![Model Selector](images/Model%20Selector.png)  
+Dropdown model tự scan + info badge (params, precision, size)
+
+![GPU Grid](images/GPU%20Grid.png)  
+8-GPU checkbox grid với VRAM bar real-time, hiện BUSY status nếu có container chạy
+
+### Configuration & VRAM Estimator
+![Config Panel](images/Config%20Panel.png)  
+Form cấu hình TP size, max_num_seqs, gpu_memory_util — tự tính VRAM breakdown trước sweep
+
+### Results & Analytics
+![Detail Popup](images/Detail%20Popup.png)  
+Click điểm trên chart → popup modal: config, VRAM breakdown, metric, error log nếu failed
+
+![Chart Controls](images/Chart%20Controls.png)  
+Rotation 3D, projection 2D (XY/XZ/YZ) + heatmap visualization, dropdown đổi Z-axis
+
+---
+
+## ⭐ Tính năng nổi bật: **Export Excel**
+
+Không cần input thủ công hay tạo pivot table! Button **"Xuất Excel"** tự động:
+- **Summary sheet**: tóm tắt 1 dòng/run (config key, metrics chính)
+- **Detailed configs**: full config từng run (TP, max_num_seqs, VRAM, batch size...)
+- **Error logs**: chỉ failed runs + error details (OOM, INVALID_TP, TIMEOUT...)
+
+Perfect để share kết quả, so sánh cấu hình, hoặc archive performance baselines.
 
 ---
 
@@ -217,16 +244,21 @@ Nhấn **"Bắt đầu Sweep"** — hệ thống tự động:
 - **Click điểm**: mở popup chi tiết (config, VRAM breakdown, metrics, error log)
 - **Đổi Z-axis**: dropdown chuyển giữa throughput / TTFT / P99
 
-### 6. Xuất Excel
+### 6. Xuất Excel — Không cần input thủ công! 🎯
 
-Button **"Xuất Excel"** trên header hoặc trong popup chi tiết.  
-File gồm 3 sheets:
+Button **"Xuất Excel"** (header hoặc popup chi tiết) → một file `.xlsx` hoàn chỉnh với:
 
-| Sheet | Nội dung |
-|-------|---------|
-| Summary | 1 row/run: metrics chính |
-| Configs | Cấu hình đầy đủ từng run |
-| Errors | Chỉ failed runs + error log |
+| Sheet | Nội dung | Dùng để |
+|-------|---------|---------|
+| **Summary** | 1 row/run: config key + metrics chính | Overview, so sánh nhanh |
+| **Configs** | Full config từng run (TP, max_seqs, util, VRAM, latency...) | Archive, replicating setup |
+| **Errors** | Chỉ failed runs + error details (OOM, TIMEOUT, SEGFAULT...) | Debug, pattern analysis |
+
+**Lợi ích:**
+- ✓ Zero manual entry — tự export từ database
+- ✓ Multiple sheets — phục vụ mục đích khác nhau (report, archive, debug)
+- ✓ Formatted nicely — có công thức, filter, width tự adjust
+- ✓ Share dễ — gửi file Excel thay vì screenshot
 
 ---
 
