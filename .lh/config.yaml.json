@@ -1,0 +1,18 @@
+{
+    "sourceFile": "config.yaml",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775152512714,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775152512714,
+            "name": "Commit-0",
+            "content": "# vLLM Auto-Tuner configuration\n# Có thể override từng key bằng ENV var AUTOTUNER_*\n\npaths:\n  models_dir: /projects/MedTrivita/common/models\n  container_models_dir: /models\n  db_path: /home/data_team/usr/huynq/MLops/vllm-autotuner/data/results.db\n  frontend_build_dir: /home/data_team/usr/huynq/MLops/vllm-autotuner/frontend/build\n\ndocker:\n  default_image: vllm/vllm-openai:v0.18.1\n  port_start: 9200\n  port_end: 9300\n  container_prefix: autotuner-\n\nruntime:\n  models_cache_ttl_s: 60\n\napi:\n  host: 0.0.0.0\n  port: 9100\n  cors_allow_origins:\n    - \"*\"\n"
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+{
+    "sourceFile": "docs/package.md",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775153463059,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775153463059,
+            "name": "Commit-0",
+            "content": "# vLLM Auto-Tuner Packaging & Deployment\n\nTài liệu này hướng dẫn 2 phương pháp đóng gói và triển khai dự án `vllm-autotuner` cho môi trường nội bộ.\n\n---\n\n## Method 1: Bare Metal Appliance (Systemd + Bash Scripts) - RECOMENDED\nPhương pháp này phù hợp cho các GPU node nội bộ đã có sẵn Conda và Docker. Systemd sẽ quản lý daemon, đảm bảo tự động chạy khi khởi động lại máy và dễ dàng xem log.\n\n**Cấu trúc thư mục:**\n```text\nvllm-autotuner/\n├── config.yaml\n├── setup_and_run.sh\n├── scripts/\n│   ├── package.sh           # Script tạo file tarball để rdist/scp\n│   ├── install_service.sh   # Script cài đặt systemd service (cần sudo)\n│   ├── start.sh             # Script systemd gọi để start process\n│   └── stop.sh              # Script systemd gọi để stop/cleanup\n```\n\n**Workflow:**\n1. **Đóng gói (Build/Pack):** Chạy `bash scripts/package.sh` để tạo ra `vllm-autotuner-release.tar.gz`.\n2. **Deploy:** Copy `vllm-autotuner-release.tar.gz` sang server đích và giải nén.\n3. **Cài đặt:** Chạy `sudo bash scripts/install_service.sh` để đăng ký service với systemd.\n4. **Quản lý:**\n   - Khởi động: `sudo systemctl start vllm-autotuner`\n   - Dừng: `sudo systemctl stop vllm-autotuner`\n   - Xem log: `journalctl -u vllm-autotuner -f`\n   - Khởi động cùng OS: `sudo systemctl enable vllm-autotuner`\n\n*(Các file script cho Method 1 được đặt trong thư mục `scripts/`)*\n\n---\n\n## Method 2: Containerized (Docker Compose)\nPhương pháp này cô lập toàn bộ backend và frontend vào chung 1 container hoặc 2 container song song, giao tiếp với Docker socket của host để spawn vLLM worker container. Phù hợp nếu server đích chưa cấu hình Conda / Python environment chuẩn.\n\n**Cấu trúc thư mục thêm vào:**\n```text\nvllm-autotuner/\n├── Dockerfile.app           # Đóng gói Node.js build (frontend) và FastAPI (backend)\n├── docker-compose.yml       # Orchestrator\n```\n\n**Lưu ý khi dùng Method 2:**\n1. Cần mount `/var/run/docker.sock` từ host vào container của `app` để backend có thể bật/tắt vLLM benchmark instance.\n2. Setup phức tạp hơn về networking (container-in-container hoặc sibling-containers).\n3. Do yêu cầu tương tác cực sát với GPU, vLLM instance vẫn được spawn dưới dạng Docker từ Python script, nên `docker-compose` chỉ dùng để bọc orchestrator.\n\n**Sử dụng:**\n```bash\ndocker-compose up -d --build\n```\nLog xem bằng: `docker-compose logs -f`"
+        }
+    ]
+}

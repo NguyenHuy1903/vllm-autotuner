@@ -150,6 +150,17 @@ Mở trình duyệt: **http://localhost:<api_port>**
 
 ---
 
+## Gallery / Demo
+
+> 🖼️ **[TODO: Thêm ảnh Dashboard chính]** — 3D scatter plot với Qwen model, TP size, throughput  
+> 🖼️ **[TODO: Thêm ảnh Model Selector]** — Dropdown chọn model, info badge  
+> 🖼️ **[TODO: Thêm ảnh GPU Grid]** — 8 GPU checkbox với VRAM bar  
+> 🖼️ **[TODO: Thêm ảnh Config Panel]** — Form cấu hình + VRAM estimator  
+> 🖼️ **[TODO: Thêm ảnh Detail Popup]** — Chi tiết khi click điểm trên chart  
+> 🖼️ **[TODO: Thêm ảnh Chart Controls]** — Rotation 3D, Projection 2D, heatmap  
+
+---
+
 ## Hướng dẫn sử dụng
 
 ### 1. Chọn Model

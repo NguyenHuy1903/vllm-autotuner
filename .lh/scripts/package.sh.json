@@ -1,0 +1,18 @@
+{
+    "sourceFile": "scripts/package.sh",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775153463059,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775153463059,
+            "name": "Commit-0",
+            "content": "#!/usr/bin/env bash\n# Đóng gói release cho vLLM Auto-Tuner\n\nDIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )/..\" && pwd )\"\nRELEASE_DIR=\"${DIR}/build/vllm-autotuner\"\nTAR_FILE=\"${DIR}/build/vllm-autotuner-release.tar.gz\"\n\necho \"==> Creating release directory at $RELEASE_DIR\"\nrm -rf \"$RELEASE_DIR\"\nmkdir -p \"$RELEASE_DIR\"\n\necho \"==> Copying tracked files into release directory...\"\nrsync -avq --progress \\\n    --exclude='.git' \\\n    --exclude='.github' \\\n    --exclude='node_modules' \\\n    --exclude='.venv' \\\n    --exclude='__pycache__' \\\n    --exclude='*.pyc' \\\n    --exclude='frontend/node_modules' \\\n    --exclude='.lh' \\\n    --exclude='data/' \\\n    --exclude='build/' \\\n    \"$DIR/\" \"$RELEASE_DIR/\"\n\necho \"==> Creating empty data dir in release...\"\nmkdir -p \"$RELEASE_DIR/data\"\n\necho \"==> Compressing release to $TAR_FILE\"\ncd \"${DIR}/build\"\ntar -czf \"$TAR_FILE\" \"vllm-autotuner\"\n\necho \"==> Done. Release package is ready at:\"\necho \"    $TAR_FILE\"\n"
+        }
+    ]
+}

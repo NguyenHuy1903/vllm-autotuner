@@ -1,0 +1,18 @@
+{
+    "sourceFile": "scripts/install_service.sh",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775153463060,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775153463060,
+            "name": "Commit-0",
+            "content": "#!/usr/bin/env bash\n\nSERVICE_NAME=\"vllm-autotuner.service\"\nTARGET=\"/etc/systemd/system/${SERVICE_NAME}\"\nDIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )/..\" && pwd )\"\n\nif [[ $EUID -ne 0 ]]; then\n   echo \"Lỗi: Script này cần chạy bằng sudo: sudo bash scripts/install_service.sh\"\n   exit 1\nfi\n\necho \"==> Đang cài đặt $SERVICE_NAME...\"\ncp \"${DIR}/scripts/${SERVICE_NAME}\" ${TARGET}\n\n# Cập nhật đường dẫn WorkingDirectory theo thư mục hiện tại\nsed -i \"s|/opt/vllm-autotuner|${DIR}|g\" ${TARGET}\n# Cập nhật user theo owner của thư mục hiện tại\nUSER_NAME=$(ls -ld ${DIR} | awk '{print $3}')\nGROUP_NAME=$(ls -ld ${DIR} | awk '{print $4}')\nsed -i \"s|User=data_team|User=${USER_NAME}|g\" ${TARGET}\nsed -i \"s|Group=data_team|Group=${GROUP_NAME}|g\" ${TARGET}\n\necho \"==> Reloading systemd daemon...\"\nsystemctl daemon-reload\nsystemctl enable ${SERVICE_NAME}\n\necho \"==> Cài đặt thành công! Thư mục ứng dụng: ${DIR}\"\necho \"    Bắt đầu service:   sudo systemctl start vllm-autotuner\"\necho \"    Dừng service:      sudo systemctl stop vllm-autotuner\"\necho \"    Kiểm tra state:    sudo systemctl status vllm-autotuner\"\necho \"    Xem log:           journalctl -u vllm-autotuner -f\"\n"
+        }
+    ]
+}

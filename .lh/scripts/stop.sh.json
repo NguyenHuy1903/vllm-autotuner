@@ -1,0 +1,18 @@
+{
+    "sourceFile": "scripts/stop.sh",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775153463060,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775153463060,
+            "name": "Commit-0",
+            "content": "#!/usr/bin/env bash\n\necho \"==> Dừng vLLM Auto-Tuner Systemd daemon...\"\n\n# Xoá các container worker còn chạy do stop app python\necho \">> Tiêu huỷ các vLLM containers đang còn treo lại nếu có...\"\ndangling_containers=$(docker ps -a --format \"{{.ID}}\\t{{.Names}}\" | grep 'autotuner-' | awk '{print $1}')\nif [ -n \"$dangling_containers\" ]; then\n    echo \">> Xóa: $dangling_containers\"\n    docker rm -f $dangling_containers\nelse\n    echo \">> Không có container vLLM worker nào treo lại.\"\nfi\n\necho \"==> Cleanup hoàn tất!\"\nexit 0\n"
+        }
+    ]
+}

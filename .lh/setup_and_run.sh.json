@@ -1,0 +1,22 @@
+{
+    "sourceFile": "setup_and_run.sh",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1775152515169,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1775152601926,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -65,6 +65,6 @@\n echo \"\"\n echo \"SSH Port Forwarding (trên máy cá nhân của bạn):\"\n echo \"\"\n echo \"  ssh -L <api_port>:localhost:<api_port> <username>@<server-ip>\"\n-echo \"  # Sau đó mở: http://localhost:9100\"\n+echo \"  # Sau đó mở: http://localhost:<api_port>\"\n echo \"\"\n"
+                }
+            ],
+            "date": 1775152515169,
+            "name": "Commit-0",
+            "content": "#!/usr/bin/env bash\n# ============================================================\n# vLLM Auto-Tuner — Setup & Run Script\n# Chạy script này 1 lần để cài deps và build frontend.\n# Sau đó dùng tmux để chạy backend thường xuyên.\n# ============================================================\nset -e\n\nSCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\nBACKEND_DIR=\"$SCRIPT_DIR/backend\"\nFRONTEND_DIR=\"$SCRIPT_DIR/frontend\"\n\necho \"=== vLLM Auto-Tuner Setup ===\"\n\n# ── 1. Kích hoạt conda env ────────────────────────────────────────────────────\nCONDA_BASE=\"$(conda info --base)\"\nsource \"$CONDA_BASE/etc/profile.d/conda.sh\"\nconda activate data\necho \"[1/4] Conda env 'data' đã kích hoạt\"\n\n# ── 2. Cài Python dependencies còn thiếu ──────────────────────────────────────\necho \"[2/4] Kiểm tra Python dependencies...\"\npip install -q aiosqlite 2>/dev/null || true\npip install -q pyyaml 2>/dev/null || true\necho \"  ✓ aiosqlite\"\necho \"  ✓ pyyaml\"\n\n# ── 3. Build React Frontend ───────────────────────────────────────────────────\necho \"[3/4] Build React frontend...\"\ncd \"$FRONTEND_DIR\"\n\nif [ ! -d \"node_modules\" ]; then\n    echo \"  npm install (lần đầu, có thể mất vài phút)...\"\n    npm install --silent\nfi\n\necho \"  npm run build...\"\nnpm run build --silent\necho \"  ✓ Frontend built tại $FRONTEND_DIR/build\"\n\n# ── 4. Khởi tạo database ─────────────────────────────────────────────────────\necho \"[4/4] Khởi tạo SQLite database...\"\nmkdir -p \"$SCRIPT_DIR/data\"\ncd \"$BACKEND_DIR\"\npython3 -c \"\nimport asyncio\nimport sys\nsys.path.insert(0, '.')\nimport db\nasyncio.run(db.init_db())\nprint('  ✓ Database khởi tạo tại ../data/results.db')\n\"\n\necho \"\"\necho \"=== Setup hoàn tất! ===\"\necho \"\"\necho \"Cấu hình infra nằm ở file: $SCRIPT_DIR/config.yaml\"\necho \"\"\necho \"Để chạy backend, mở tmux session:\"\necho \"\"\necho \"  tmux new-session -s autotuner\"\necho \"  conda activate data\"\necho \"  cd $BACKEND_DIR\"\necho \"  python main.py   # host/port đọc từ config.yaml\"\necho \"\"\necho \"SSH Port Forwarding (trên máy cá nhân của bạn):\"\necho \"\"\necho \"  ssh -L <api_port>:localhost:<api_port> <username>@<server-ip>\"\necho \"  # Sau đó mở: http://localhost:9100\"\necho \"\"\n"
+        }
+    ]
+}
